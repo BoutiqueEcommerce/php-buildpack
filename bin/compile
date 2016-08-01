@@ -58,13 +58,14 @@ function fetch_package() {
 }
 
 function detect_framework() {
-  BUILD_DIR=$1
-  for f in "$basedir/../frameworks/"*; do
-      if "$f" detect "$BUILD_DIR"; then
-          FRAMEWORK=$f
-          break
-      fi
-  done
+  FRAMEWORK=change4
+#  BUILD_DIR=$1
+#  for f in "$basedir/../frameworks/"*; do
+#      if "$f" detect "$BUILD_DIR"; then
+#          FRAMEWORK=$f
+#          break
+#      fi
+#  done
 }
 
 function best_php_version() {
