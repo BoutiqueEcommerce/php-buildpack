@@ -39,6 +39,9 @@ case "$1" in
         php bin/change.phar change:install-plugin --type=theme --vendor=Rbs Base | indent
         php bin/change.phar change:install-plugin --type=theme --vendor=Rbs Common | indent
         php bin/change.phar change:install-plugin --type=theme --vendor=Rbs Blank | indent
+        php bin/change.phar change:install-package --vendor=Eid EBoutique
+        php bin/change.phar change:install-plugin --type=theme --vendor=Eid Simple
+        php bin/change.phar change:install-plugin --type=theme --vendor=Eid Zest
         if [ "$INSTALL_MODULES" != "" ]; then
           IFS=',' read -r -a modules <<< "$INSTALL_MODULES"
           for element in "${modules[@]}"; do
