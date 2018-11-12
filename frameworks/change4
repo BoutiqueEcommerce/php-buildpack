@@ -56,7 +56,11 @@ case "$1" in
             php bin/change.phar change:install-plugin --type=theme --vendor=${theme[0]} ${theme[1]} | indent
           done
         fi
-        php bin/change.phar change:set-document-root $BUILD_DIR/www | indent
+        if [ "$WEB_BASE_URL_PATH" != "" ]; then
+            php bin/change.phar change:set-document-root $BUILD_DIR/www $WEB_BASE_URL_PATH | indent
+        else
+            php bin/change.phar change:set-document-root $BUILD_DIR/www | indent
+        fi
         popd > /dev/null
         ;;
     end)
