@@ -264,9 +264,9 @@ install_composer_deps "$BUILD_DIR"
 
 # Detect PHP framework
 # Set FRAMEWORK if not set in environment by user
-if [ -z "$FRAMEWORK" ]; then
-#    detect_framework "$BUILD_DIR"
-fi
+# if [ -z "$FRAMEWORK" ]; then
+# detect_framework "$BUILD_DIR"
+# fi
 
 # Fall back to classic mode
 if [ -z "$FRAMEWORK" ]; then
