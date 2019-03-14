@@ -336,7 +336,7 @@ if [ -n "\$NEW_RELIC_LICENSE_KEY" ]; then
 fi
 
 erb conf/nginx.conf.erb > /app/vendor/nginx/conf/nginx.conf
-erb conf/site.conf.erb > /app/vendor/nginx/conf/site.conf
+#erb conf/site.conf.erb > /app/vendor/nginx/conf/site.conf
 
 `init_log_plex ${LOG_FILES}`
 `tail_log_plex ${LOG_FILES} ${SYS_LOG_FILES}`
