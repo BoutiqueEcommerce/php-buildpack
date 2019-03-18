@@ -76,8 +76,11 @@ http {
         	charset utf-8;
 		root /app/boutique001;
 
-		location / {
-	  		index index.php;
+		location ~ \.php {
+    			include fastcgi_params;
+    			fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
+    			fastcgi_pass php;
+    			fastcgi_buffers 256 4k;
 		}
 
 	}
@@ -90,8 +93,11 @@ http {
 
 		root /app/boutique002;
 
-		location / {
-	  		index index.php;
+		location ~ \.php {
+    			include fastcgi_params;
+    			fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
+    			fastcgi_pass php;
+    			fastcgi_buffers 256 4k;
 		}
 	}
 }
