@@ -70,6 +70,10 @@ http {
 
     	server {
     		server_name test-boutique01.com;
+		listen <%= ENV['PORT'] %>;
+
+        	#Specify a charset
+        	charset utf-8;
 		root /app/boutique001;
 
 		location / {
@@ -79,7 +83,11 @@ http {
 	}
 	server {
     		server_name test-boutique02.com;
-	
+		listen <%= ENV['PORT'] %>;
+
+        	#Specify a charset
+        	charset utf-8;
+
 		root /app/boutique002;
 
 		location / {
