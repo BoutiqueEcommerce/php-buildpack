@@ -29,6 +29,12 @@ Install CLI tool → http://cli.scalingo.com
 If you have `package.json` file in your repository, Node.JS will be installed automatically
 and dependencies will be installed according to the `package.json` file.
 
+You can disable this feature by defining the environment variable `PHP_BUILDPACK_NO_NODE=true`.
+
+You might want to disable it when you want a fined grained management of the Node.js part by using
+the official [Node.js buildpack](https://github.com/Scalingo/nodejs-buildpack) in combination with this
+buildpack thanks to the [Multi buildpack](https://doc.scalingo.com/platform/deployment/buildpacks/multi).
+
 ## Available versions
 
 [Available PHP Versions](https://storage.sbg1.cloud.ovh.net/v1/AUTH_be65d32d71a6435589a419eac98613f2/scalingo-php-buildpack/manifest.php)
@@ -168,10 +174,18 @@ For example, to install the Sundown extension:
 Note that the extension requirements defined by dependencies are not taken into account there.
 It must be required by the project itself.
 
-##Logging
+## Logging
 
 This buildpack defines default log files by framework.
 It also defines log files nginx and php.
+
+## Blackfire
+
+The buildpack support automatically [Blackfire](https://blackfire.io) for monitoring if the
+following environment variables are set:
+
+* `BLACKFIRE_SERVER_ID`
+* `BLACKFIRE_SERVER_TOKEN`
 
 ## Configuration
 

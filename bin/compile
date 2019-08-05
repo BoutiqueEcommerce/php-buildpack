@@ -8,8 +8,11 @@ basedir="$( cd -P "$( dirname "$0" )" && pwd )"
 source "$basedir/../conf/buildpack.conf"
 source $basedir/common.sh
 source $basedir/../lib/composer
-source $basedir/../lib/nodejs
 source $basedir/../lib/newrelic
+
+if [ "$PHP_BUILDPACK_NO_NODE" != "true" ] ; then
+  source $basedir/../lib/nodejs
+fi
 
 if [ -n "$BUILDPACK_DEBUG" ]; then
     set -x
@@ -261,6 +264,11 @@ if [ -f "$BUILD_DIR/composer.json" ] && package_newrelic_enabled; then
     install_newrelic "$NEWRELIC_VERSION"
 fi
 
+if [ -n "$BLACKFIRE_SERVER_ID" -a -n "$BLACKFIRE_SERVER_TOKEN" ] ; then
+    fetch_package "ext/$(php_api_version)/php-blackfire" "/app/vendor/php" | indent
+    cp /app/vendor/php/bin/profile.blackfire.sh $BUILD_DIR/.profile.d
+fi
+
 if [ -n "$BUILDPACK_DEBUG" ]; then
     ls -R /app/vendor/nginx
     ls -R /app/vendor/php
@@ -305,7 +313,10 @@ if [ -n "$PHP_FPM_INCLUDES" ] ; then
     done
 fi
 
-install_node_deps "$BUILD_DIR"
+if [ "$PHP_BUILDPACK_NO_NODE" != "true" ] ; then
+  install_node_deps "$BUILD_DIR"
+fi
+
 install_composer_deps "$BUILD_DIR"
 
 # Detect PHP framework
@@ -379,8 +390,10 @@ pmsgr=/tmp/pmsgr
 rm -f \$pmsgr
 mkfifo \$pmsgr
 
-for var in \`env | cut -f1 -d=\`; do
-    echo "env[\$var] = \\$\${var}" >> /app/vendor/php/etc/php-fpm.conf
+# Loop through all environment variables. Work even though there are multi-lines
+# env variables.
+env -0 | while IFS='=' read -r -d '' name value; do
+    echo "env[\$name] = \\$\${name}" >> /app/vendor/php/etc/php-fpm.conf
 done
 
 # Set APP_ENV to prod by default for symfony based framework.
