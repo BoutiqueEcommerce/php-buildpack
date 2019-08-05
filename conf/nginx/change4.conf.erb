@@ -17,7 +17,7 @@ location ~ ^(.+?\.php).*$ {
     include        fastcgi_params;
     proxy_buffering off;
     fastcgi_connect_timeout 3s;
-    fastcgi_read_timeout 10s;
+    fastcgi_read_timeout 30s;
     fastcgi_buffers 256 4k;
     fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
     fastcgi_pass   php;
