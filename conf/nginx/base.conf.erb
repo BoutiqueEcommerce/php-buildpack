@@ -5,6 +5,7 @@ daemon off;
 events {
     worker_connections  1024;
 }
+
 http {
     # Hide nginx version information.
     server_tokens off;
@@ -15,14 +16,20 @@ http {
 
     keepalive_timeout  65;
 
+    <% if ENV.has_key?("ACCESS_LOG_FORMAT") and ENV["ACCESS_LOG_FORMAT"].to_s != "" %>
+    log_format specialLog '<%= ENV['ACCESS_LOG_FORMAT'].gsub("'", "\\\\'") %>';
+    <% else %>
     log_format specialLog '$http_x_forwarded_for - '
                       '"$request" $status $body_bytes_sent '
-                      '"$http_referer" "$http_user_agent"';
+                      '"$http_referer" "$http_user_agent" '
+                      '$request_time';
+
+    <% end %>
 
     error_log logs/error.log notice;
     access_log logs/access.log specialLog;
 
-    client_max_body_size 100m;
+    client_max_body_size 75m;
     client_body_timeout 600s;
 
     upstream php {
@@ -74,6 +81,10 @@ http {
 
         #Specify a charset
         charset utf-8;
+
+        fastcgi_buffering off;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
 
         include site.conf;
 

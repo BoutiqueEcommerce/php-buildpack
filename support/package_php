@@ -18,7 +18,7 @@ php_version="$1"
 mcrypt_version="2.5.8"
 
 if [ -z "$PHP_ZLIB_VERSION" ]; then
-    PHP_ZLIB_VERSION=1.2.8
+    PHP_ZLIB_VERSION=1.2.11
 fi
 
 echo "-----> Packaging PHP $php_version"
@@ -27,9 +27,19 @@ tempdir=$(mktmpdir php)
 cd $tempdir
 
 echo "-----> Downloading dependency zlib ${PHP_ZLIB_VERSION}"
-
 curl -LO "${SWIFT_URL}/zlib/zlib-${PHP_ZLIB_VERSION}.tar.gz"
 tar -xzvf "zlib-${PHP_ZLIB_VERSION}.tar.gz"
+
+# If we're using the stack scalingo
+# - it requires a custom libzip
+libzip_flag=""
+if [ "$STACK" = "scalingo" ] ; then
+  echo "-----> Downloading dependency libzip ${zip_version}"
+  mkdir /app/vendor/libzip -p
+  curl -L -o - "${SWIFT_URL}/package/libzip-${zip_version}.tgz" | tar -C /app/vendor/libzip -xvz
+  export C_INCLUDE_PATH="$C_INCLUDE_PATH:/app/vendor/libzip/include"
+  libzip_flag="--with-libzip=/app/vendor/libzip"
+fi
 
 echo "-----> Downloading PHP $php_version"
 curl -LO "http://php.net/distributions/php-${php_version}.tar.gz"
@@ -37,23 +47,22 @@ tar -xzvf "php-${php_version}.tar.gz"
 
 install_zend_optimizer=":"
 
-if [[ "$php_version" =~ 5.[34].[0-9]+ ]]; then
+if [[ "$php_version" =~ 5.4.[0-9]+ ]]; then
     install_zend_optimizer=$(cat <<SH
     /app/vendor/php/bin/pecl install ZendOpcache-beta \
-        && echo "zend_extension=\$(/app/vendor/php/bin/php-config --extension-dir)/opcache.so" >> /app/vendor/php/etc/conf.d/opcache.ini
+        && echo "zend_extension=\$(/app/vendor/php/bin/php-config --extension-dir)/opcache.so" > /app/vendor/php/etc/conf.d/opcache.ini
 SH
 )
 else
     install_zend_optimizer=$(cat <<SH
-    echo "zend_extension=opcache.so" >> /app/vendor/php/etc/conf.d/opcache.ini
+    echo "zend_extension=opcache.so" > /app/vendor/php/etc/conf.d/opcache.ini
 SH
 )
 fi
 
-# Small hack to find FreeType dependency with ubuntu Trusty
-if [ ! -d "/usr/include/freetype2/freetype" ] ; then
-  mkdir /usr/include/freetype2/freetype
-  cp /usr/include/freetype2/*.h /usr/include/freetype2/freetype
+WITH_CURL_CONFIGURE=""
+if [ -d '/app/.apt/usr' ] ; then
+    WITH_CURL_CONFIGURE="--with-curl=/app/.apt/usr"
 fi
 
 mkdir -p "/app/vendor/php/zlib" "/app/vendor/libmcrypt" \
@@ -74,6 +83,8 @@ mkdir -p "/app/vendor/php/zlib" "/app/vendor/libmcrypt" \
 --with-pgsql \
 --enable-shmop \
 --enable-zip \
+${WITH_CURL_CONFIGURE} \
+${libzip_flag} \
 --with-jpeg-dir=/usr \
 --with-png-dir=/usr \
 --with-freetype-dir=/usr \
@@ -99,7 +110,7 @@ mkdir -p "/app/vendor/php/zlib" "/app/vendor/libmcrypt" \
 && make install \
 && popd > /dev/null \
 && /app/vendor/php/bin/pear config-set php_dir /app/vendor/php \
-&& $install_zend_optimizer
+&& eval $install_zend_optimizer
 
 mkdir package
 pushd /app/vendor/php > /dev/null
