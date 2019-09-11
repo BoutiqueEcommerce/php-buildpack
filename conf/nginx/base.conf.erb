@@ -69,12 +69,12 @@ http {
     # text/html is always compressed by HttpGzipModule
 
     	server {
-    		server_name test-boutique01.com;
+    		server_name boutique01.monetico.fr;
 		listen <%= ENV['PORT'] %>;
 
         	#Specify a charset
         	charset utf-8;
-		root /app/boutique001;
+		root /app/boutique01;
 
 		location ~ \.php {
     			include fastcgi_params;
