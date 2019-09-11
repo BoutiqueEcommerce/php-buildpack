@@ -8,8 +8,11 @@ basedir="$( cd -P "$( dirname "$0" )" && pwd )"
 source "$basedir/../conf/buildpack.conf"
 source $basedir/common.sh
 source $basedir/../lib/composer
-source $basedir/../lib/nodejs
 source $basedir/../lib/newrelic
+
+if [ "$PHP_BUILDPACK_NO_NODE" != "true" ] ; then
+  source $basedir/../lib/nodejs
+fi
 
 if [ -n "$BUILDPACK_DEBUG" ]; then
     set -x
@@ -58,7 +61,7 @@ function fetch_package() {
 }
 
 function detect_framework() {
-   FRAMEWORK=change4
+  FRAMEWORK=change4
 #  BUILD_DIR=$1
 #  for f in "$basedir/../frameworks/"*; do
 #      if "$f" detect "$BUILD_DIR"; then
@@ -68,62 +71,82 @@ function detect_framework() {
 #  done
 }
 
+function best_php_version() {
+  local require_php=""
+  if [ -f "$BUILD_DIR/composer.json" ] ; then
+    for key in ".require.php" ".config.platform.php" ".extra.${composer_extra_key}.engines.php" ; do
+      require_php=$(jq --raw-output "${key} // \"\"" < "$BUILD_DIR/composer.json")
+      [ -n "${require_php}" ] && break
+    done
+  fi
+  [ -z "${require_php}" ] && require_php="$DEFAULT_PHP"
+  curl --fail --location --silent "${SEMVER_SERVER}/php-scalingo/resolve/${require_php}"
+}
+
 function php_api_version() {
-    basename "$(php-config --extension-dir)" | tr '-' ' ' | cut -f 5 -d ' '
+  basename "$(php-config --extension-dir)" | tr '-' ' ' | cut -f 5 -d ' '
 }
 
 function has_heroku_extra() {
-   jq --raw-output '.extra.heroku // ""' < "$BUILD_DIR/composer.json"
+  jq --raw-output '.extra.heroku // ""' < "$BUILD_DIR/composer.json"
 }
 
 function package_document_root() {
-    jq --raw-output ".extra.${composer_extra_key}[\"document-root\"] // \"\"" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}[\"document-root\"] // \"\"" < "$BUILD_DIR/composer.json"
 }
 
 function package_index_file() {
-    jq --raw-output ".extra.${composer_extra_key}[\"index-document\"] // \"index.php\"" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}[\"index-document\"] // \"index.php\"" < "$BUILD_DIR/composer.json"
 }
 
 function package_framework() {
-    jq --raw-output ".extra.${composer_extra_key}.framework // \"\"" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}.framework // \"\"" < "$BUILD_DIR/composer.json"
 }
 
 function package_nginx_version() {
-    jq --raw-output ".extra.${composer_extra_key}.engines.nginx // \"default\"" < "$BUILD_DIR/composer.json"
-}
-
-function package_php_version() {
-    jq --raw-output ".extra.${composer_extra_key}.engines.php // \"default\"" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}.engines.nginx // \"default\"" < "$BUILD_DIR/composer.json"
 }
 
 function package_php_config() {
-    jq --raw-output ".extra.${composer_extra_key}[\"php-config\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}[\"php-config\"] // [] | .[]" < "$BUILD_DIR/composer.json"
 }
 
 function package_php_includes() {
-    jq --raw-output ".extra.${composer_extra_key}[\"php-includes\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}[\"php-includes\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+}
+
+function package_php_fpm_config() {
+  jq --raw-output ".extra.${composer_extra_key}[\"php-fpm-config\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+}
+
+function package_php_fpm_includes() {
+  jq --raw-output ".extra.${composer_extra_key}[\"php-fpm-includes\"] // [] | .[]" < "$BUILD_DIR/composer.json"
 }
 
 function package_nginx_includes() {
-    jq --raw-output ".extra.${composer_extra_key}[\"nginx-includes\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}[\"nginx-includes\"] // [] | .[]" < "$BUILD_DIR/composer.json"
 }
 
 function package_log_files() {
-    jq --raw-output ".extra.${composer_extra_key}[\"log-files\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}[\"log-files\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+}
+
+function package_access_log_format() {
+  jq --raw-output ".extra.${composer_extra_key}[\"access-log-format\"] // \"\"" < "$BUILD_DIR/composer.json"
 }
 
 function package_compile_cmd() {
-    jq --raw-output ".extra.${composer_extra_key}[\"compile\"] // [] | .[]" < "$BUILD_DIR/composer.json"
+  jq --raw-output ".extra.${composer_extra_key}[\"compile\"] // [] | .[]" < "$BUILD_DIR/composer.json"
 }
 
 function package_newrelic_enabled() {
-    local val=$(jq --raw-output ".extra.${composer_extra_key}[\"new-relic\"] // false" < "$BUILD_DIR/composer.json")
+  local val=$(jq --raw-output ".extra.${composer_extra_key}[\"new-relic\"] // false" < "$BUILD_DIR/composer.json")
 
-    if [ "$val" = "true" ]; then
-        return 0
-    else
-        return 1
-    fi
+  if [ "$val" = "true" ]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 export_env_dir "$3"
@@ -134,26 +157,10 @@ export PATH="$BUILD_DIR/bin:$PATH"
 curl --fail "${SWIFT_URL}/jq/jq" -L -s -o - > "$BUILD_DIR/bin/jq"
 chmod +x "$BUILD_DIR/bin/jq"
 
-DEFAULT_PHP="5.6.24"
-DEFAULT_NGINX="1.10.1"
+DEFAULT_PHP="7.3"
+DEFAULT_NGINX="1.15.8"
 
-AVAILABLE_PHP_VERSIONS=$(curl "${SWIFT_URL}/manifest.php" 2> /dev/null)
 AVAILABLE_NGINX_VERSIONS=$(curl "${SWIFT_URL}/manifest.nginx" 2> /dev/null)
-
-PHP_VERSION="default"
-NGINX_VERSION="default"
-DOCUMENT_ROOT=
-INDEX_DOCUMENT="index.php"
-FRAMEWORK=
-PHP_EXTRA_CONFIG=
-PHP_INCLUDES=
-COMPILE_CMD=
-NGINX_INCLUDES=
-NEWRELIC_VERSION="${NEWRELIC_VERSION:=6.2.0.158}"
-LOG_FILES=( "/app/vendor/nginx/logs/access.log" "/app/vendor/nginx/logs/error.log" "/app/vendor/php/var/log/error.log" )
-
-check_composer_syntax "$BUILD_DIR"
-check_composer_json_and_lock "$BUILD_DIR"
 
 # Read config variables from composer.json if it exists
 if [ -f "$BUILD_DIR/composer.json" ]; then
@@ -162,26 +169,40 @@ if [ -f "$BUILD_DIR/composer.json" ]; then
     protip "Your composer.json is using the key 'extra' → 'heroku', you should switch to 'extra' → 'paas' for standardization"
     composer_extra_key="heroku"
   fi
+fi
 
-  PHP_VERSION=$(package_php_version)
+PHP_VERSION=$(best_php_version)
+NGINX_VERSION="${NGINX_VERSION:-default}"
+DOCUMENT_ROOT=
+INDEX_DOCUMENT="${INDEX_DOCUMENT:-index.php}"
+FRAMEWORK=
+PHP_EXTRA_CONFIG=
+PHP_INCLUDES=
+PHP_FPM_INCLUDES=
+PHP_FPM_EXTRA_CONFIG=
+COMPILE_CMD=
+NGINX_INCLUDES=
+ACCESS_LOG_FORMAT_COMPOSER_JSON=
+NEWRELIC_VERSION="${NEWRELIC_VERSION:=8.1.0.209}"
+LOG_FILES=( "/app/vendor/nginx/logs/access.log" "/app/vendor/nginx/logs/error.log" "/app/vendor/php/var/log/error.log" )
+
+check_composer_syntax "$BUILD_DIR"
+check_composer_json_and_lock "$BUILD_DIR"
+
+# Read config variables from composer.json if it exists
+if [ -f "$BUILD_DIR/composer.json" ]; then
   NGINX_VERSION=$(package_nginx_version)
   DOCUMENT_ROOT=$(package_document_root)
   INDEX_DOCUMENT=$(package_index_file)
   FRAMEWORK=$(package_framework)
   PHP_EXTRA_CONFIG=$(package_php_config)
+  PHP_FPM_EXTRA_CONFIG=$(package_php_fpm_config)
   PHP_INCLUDES=$(package_php_includes)
+  PHP_FPM_INCLUDES=$(package_php_fpm_includes)
   COMPILE_CMD=$(package_compile_cmd)
   NGINX_INCLUDES=$(package_nginx_includes)
   USER_LOG_FILES=$(package_log_files)
-fi
-
-# Try reading PHP version from .php-version file in project
-if [ -f "$BUILD_DIR/.php-version" ]; then
-    PHP_VERSION=$(cat "$BUILD_DIR/.php-version")
-fi
-
-if [ "$PHP_VERSION" = "default" ]; then
-    PHP_VERSION="$DEFAULT_PHP"
+  ACCESS_LOG_FORMAT_COMPOSER_JSON=$(package_access_log_format)
 fi
 
 if [ "$NGINX_VERSION" = "default" ]; then
@@ -190,7 +211,6 @@ fi
 
 # Look for ".*" versions, match them against all available versions
 # and select the latest version which was found.
-PHP_VERSION=$(find_version "${AVAILABLE_PHP_VERSIONS}" "${PHP_VERSION}" "PHP")
 NGINX_VERSION=$(find_version "${AVAILABLE_NGINX_VERSIONS}" "${NGINX_VERSION}" "Nginx")
 
 VENDORED_NGINX=/app/vendor/nginx
@@ -206,15 +226,20 @@ status "Bundling PHP ${PHP_VERSION}"
 # Install libraries also on build container, so PHP doesn't wayne about missing
 # dynamic libraries when running it during the slug compilation.
 fetch_package "libmcrypt-${mcrypt_version}" /app/vendor/libmcrypt > /dev/null
+fetch_package "libzip-${zip_version}" /app/vendor/libzip > /dev/null
 
 fetch_engine_package php "$PHP_VERSION" "${VENDORED_PHP}" | indent
 
 test ! -d ".profile.d" && mkdir -p .profile.d || true
 
 cat > ".profile.d/php.sh" <<SH
-export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/app/bin:${VENDORED_NGINX}/sbin:${VENDORED_PHP}/sbin:${VENDORED_PHP}/bin:/app/vendor/bin:\$PATH
+export PATH=/app/bin:${VENDORED_NGINX}/sbin:${VENDORED_PHP}/sbin:${VENDORED_PHP}/bin:/app/vendor/bin:\$PATH
 export APP_BUILD_TIME=$(date +%Y%m%d%H%M%S)
 SH
+
+if [ $STACK = "scalingo" ] ; then
+    fetch_package "tail-${coreutils_version}" /app/vendor/coreutils > /dev/null
+fi
 
 source ".profile.d/php.sh"
 
@@ -226,17 +251,22 @@ fetch_package "ext/$(php_api_version)/php-apcu" "/app/vendor/php" | indent
 echo "       phpredis"
 fetch_package "ext/$(php_api_version)/php-redis" "/app/vendor/php" | indent
 
-if [[ $PHP_VERSION =~ "5.3.[0-9]." ]] ; then
-  echo "       mongo-legacy"
-  fetch_package "ext/$(php_api_version)/php-mongo-legacy" "/app/vendor/php" | indent
-else
-  echo "       mongodb"
-  fetch_package "ext/$(php_api_version)/php-mongodb" "/app/vendor/php" | indent
+echo "       mongodb"
+fetch_package "ext/$(php_api_version)/php-mongodb" "/app/vendor/php" | indent
+
+if [ "$(php_api_version)" = "20170718" -o "$(php_api_version)" = "20180731" ] ; then
+    echo "       mcrypt"
+    fetch_package "ext/$(php_api_version)/php-mcrypt" "/app/vendor/php" | indent
 fi
 
 if [ -f "$BUILD_DIR/composer.json" ] && package_newrelic_enabled; then
     LOG_FILES+=( "/app/vendor/newrelic/daemon.log" )
     install_newrelic "$NEWRELIC_VERSION"
+fi
+
+if [ -n "$BLACKFIRE_SERVER_ID" -a -n "$BLACKFIRE_SERVER_TOKEN" ] ; then
+    fetch_package "ext/$(php_api_version)/php-blackfire" "/app/vendor/php" | indent
+    cp /app/vendor/php/bin/profile.blackfire.sh $BUILD_DIR/.profile.d
 fi
 
 if [ -n "$BUILDPACK_DEBUG" ]; then
@@ -245,21 +275,48 @@ if [ -n "$BUILDPACK_DEBUG" ]; then
 fi
 
 mkdir -p "conf"
+cp "$basedir/util/autotune.php" "conf/autotune.php"
 cp "$basedir/../conf/nginx/base.conf.erb" "conf/nginx.conf.erb"
-cp "$basedir/../conf/php/php-fpm.conf" "/app/vendor/php/etc/php-fpm.conf"
+# If PHP 7.3, custom config file to improve logging
+if [ "$(php_api_version)" = "20180731" ] ; then
+  cp "$basedir/../conf/php/php-fpm-73.conf" "/app/vendor/php/etc/php-fpm.conf"
+else
+  cp "$basedir/../conf/php/php-fpm.conf" "/app/vendor/php/etc/php-fpm.conf"
+fi
 cp "$basedir/../conf/php/php.ini" "/app/vendor/php/etc/php.ini"
+
+mkdir -p /app/vendor/php/etc/fpm.d
 
 pear config-set php_ini /app/vendor/php/etc/php.ini &> /dev/null
 
-for conf in $PHP_EXTRA_CONFIG; do
+echo "; extra configuration for php fpm" >> "/app/vendor/php/etc/fpm.d/extra.conf"
+
+# IFS= to set on multipleline each configuration item
+OLDIFS=$IFS
+IFS=
+echo $PHP_EXTRA_CONFIG | while read conf ; do
     echo "$conf" >> "/app/vendor/php/etc/php.ini"
 done
+
+echo $PHP_FPM_EXTRA_CONFIG | while read conf ; do
+    echo "$conf" >> "/app/vendor/php/etc/fpm.d/extra.conf"
+done
+IFS=$OLDIFS
 
 for include in $PHP_INCLUDES; do
     cp "$BUILD_DIR/$include" "/app/vendor/php/etc/conf.d/"
 done
 
-install_node_deps "$BUILD_DIR"
+if [ -n "$PHP_FPM_INCLUDES" ] ; then
+    for include in $PHP_FPM_INCLUDES; do
+        cp "$BUILD_DIR/$include" "/app/vendor/php/etc/fpm.d/"
+    done
+fi
+
+if [ "$PHP_BUILDPACK_NO_NODE" != "true" ] ; then
+  install_node_deps "$BUILD_DIR"
+fi
+
 install_composer_deps "$BUILD_DIR"
 
 # Detect PHP framework
@@ -287,7 +344,7 @@ fi
 
 LOG_FILES=$(unique_array ${LOG_FILES[@]} ${USER_LOG_FILES[@]})
 if [ -n "$FRAMEWORK" ] && [ -f "$FRAMEWORK" ]; then
-    FRAMEWORK_LOG_FILES=$("$FRAMEWORK" get-log-files)
+    FRAMEWORK_LOG_FILES=$("$FRAMEWORK" get-log-files "$BUILD_DIR")
     LOG_FILES=$(unique_array ${LOG_FILES[@]} ${FRAMEWORK_LOG_FILES[@]})
 fi
 
@@ -309,11 +366,22 @@ status "Vendoring binaries into slug"
 mv /app/vendor/libmcrypt vendor/libmcrypt
 mv /app/vendor/nginx vendor/nginx
 mv /app/vendor/php vendor/php
+[ -d "/app/vendor/libzip" ] && mv /app/vendor/libzip vendor/libzip
+[ -d "/app/vendor/coreutils" ] && mv /app/vendor/coreutils vendor/coreutils
 [ -d "/app/vendor/libmemcached" ] && mv /app/vendor/libmemcached vendor/libmemcached
+[ -d "/app/vendor/gmp" ] && mv /app/vendor/gmp vendor/gmp
+[ -d "/app/vendor/libtidy" ] && mv /app/vendor/libtidy vendor/libtidy
 
 mkdir -p "bin" "vendor/bin"
-cp ${basedir}/heroku* "bin"
-cp ${basedir}/heroku* "vendor/bin"
+
+if [ "$STACK" = "scalingo" ] ; then
+    test ! -f "bin/tail" && ln -s "/app/vendor/coreutils/bin/tail" "bin/tail"
+fi
+
+# If this buildpack is run after the nodejs buildpack remove the WEB_CONCURRENCY script
+if [ -f "$BUILD_DIR/.profile.d/WEB_CONCURRENCY.sh" ] ; then
+  rm "$BUILD_DIR/.profile.d/WEB_CONCURRENCY.sh"
+fi
 
 cat > "bin/run" <<SH
 #!/usr/bin/env bash
@@ -322,13 +390,19 @@ pmsgr=/tmp/pmsgr
 rm -f \$pmsgr
 mkfifo \$pmsgr
 
-for var in \`env | cut -f1 -d=\`; do
-    echo "env[\$var] = \\$\${var}" >> /app/vendor/php/etc/php-fpm.conf
+# Loop through all environment variables. Work even though there are multi-lines
+# env variables.
+env -0 | while IFS='=' read -r -d '' name value; do
+    echo "env[\$name] = \\$\${name}" >> /app/vendor/php/etc/php-fpm.conf
 done
 
-export DOCUMENT_ROOT="$DOCUMENT_ROOT"
-export INDEX_DOCUMENT="$INDEX_DOCUMENT"
-export NGINX_INCLUDES="$NGINX_INCLUDES"
+# Set APP_ENV to prod by default for symfony based framework.
+export APP_ENV="\${APP_ENV:-prod}"
+export DOCUMENT_ROOT="\${DOCUMENT_ROOT:-$DOCUMENT_ROOT}"
+export INDEX_DOCUMENT="\${INDEX_DOCUMENT:-$INDEX_DOCUMENT}"
+export NGINX_INCLUDES="\${NGINX_INCLUDES:-$NGINX_INCLUDES}"
+export ACCESS_LOG_FORMAT_COMPOSER_JSON='$ACCESS_LOG_FORMAT_COMPOSER_JSON'
+export ACCESS_LOG_FORMAT="\${ACCESS_LOG_FORMAT:-\$ACCESS_LOG_FORMAT_COMPOSER_JSON}"
 
 if [ -n "\$NEW_RELIC_LICENSE_KEY" ]; then
     export NEW_RELIC_LOG=\${NEW_RELIC_LOG:=/app/vendor/newrelic/daemon.log}
@@ -337,6 +411,32 @@ fi
 
 erb conf/nginx.conf.erb > /app/vendor/nginx/conf/nginx.conf
 #erb conf/site.conf.erb > /app/vendor/nginx/conf/site.conf
+
+if [[ -z \${WEB_CONCURRENCY:-} ]]; then
+    ram="512M"
+    container_size=\${CONTAINER_SIZE:-M}
+    if [ \$container_size = "S" ] ; then
+        ram="256M"
+    elif [ \$container_size = "L" ] ; then
+        ram="1024M"
+    elif [ \$container_size = "XL" ] ; then
+        ram="2048M"
+    elif [ \$container_size = "2XL" ] ; then
+        ram="4096M"
+    elif [ \$container_size = "3XL" ] ; then
+        ram="8182M"
+    fi
+
+    echo "Optimizing defaults for \${container_size} container..." >&2
+
+    # determine number of FPM processes to run
+    read WEB_CONCURRENCY php_memory_limit <<<\$(php -c "/app/vendor/php/etc/php.ini" /app/conf/autotune.php -y "/app/vendor/php/etc/php-fpm.conf" -t "\$DOCUMENT_ROOT" "\$ram")
+    [[ \$WEB_CONCURRENCY -lt 3 ]] && WEB_CONCURRENCY=3
+    export WEB_CONCURRENCY
+    echo "\${WEB_CONCURRENCY} processes at \${php_memory_limit}B memory limit." >&2
+else
+    echo "Using WEB_CONCURRENCY=\${WEB_CONCURRENCY} processes." >&2
+fi
 
 `init_log_plex ${LOG_FILES}`
 `tail_log_plex ${LOG_FILES} ${SYS_LOG_FILES}`

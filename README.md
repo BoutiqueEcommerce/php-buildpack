@@ -7,15 +7,15 @@ support.
 
 ## Characteristics
 
-* __Nginx__ 1.3 to 1.9 - __PHP__ 5.3, 5.4, 5.5, 5.6 and 7.0 - __PHP FPM__
+* __Nginx__ 1.3 to 1.10 - __PHP__ 5.3 (without extension), 5.4, 5.5, 5.6, 7.0 and 7.1 - __PHP FPM__
 * Lightweight stack compared to Apache-ModPHP
 * Composer support
 * Various frameworks support out of the box (no configuration)
-* Dynamic installing of [supported extensions](support/ext) listed as `ext-` requirments in `composer.json`.
+* Dynamic installing of [supported extensions](support/ext) listed as `ext-` requirements in `composer.json`.
 
 ## How to use it
 
-This buildpack is used automatically by Scalingo. So you juste need to create a
+This buildpack is used automatically by Scalingo. So you just need to create a
 PHP application and to deploy it.
 
 ```
@@ -29,11 +29,17 @@ Install CLI tool → http://cli.scalingo.com
 If you have `package.json` file in your repository, Node.JS will be installed automatically
 and dependencies will be installed according to the `package.json` file.
 
+You can disable this feature by defining the environment variable `PHP_BUILDPACK_NO_NODE=true`.
+
+You might want to disable it when you want a fined grained management of the Node.js part by using
+the official [Node.js buildpack](https://github.com/Scalingo/nodejs-buildpack) in combination with this
+buildpack thanks to the [Multi buildpack](https://doc.scalingo.com/platform/deployment/buildpacks/multi).
+
 ## Available versions
 
-[Available PHP Versions](https://lb1047.pcs.ovh.net/v1/AUTH_c91a9132e4f149809d23b20b6de57161/appsdeck-buildpack-php/manifest.php)
+[Available PHP Versions](https://storage.sbg1.cloud.ovh.net/v1/AUTH_be65d32d71a6435589a419eac98613f2/scalingo-php-buildpack/manifest.php)
 
-[Available NGINX Versions](https://lb1047.pcs.ovh.net/v1/AUTH_c91a9132e4f149809d23b20b6de57161/appsdeck-buildpack-php/manifest.nginx)
+[Available NGINX Versions](https://storage.sbg1.cloud.ovh.net/v1/AUTH_be65d32d71a6435589a419eac98613f2/scalingo-php-buildpack/manifest.nginx)
 
 ## Detection
 
@@ -48,6 +54,13 @@ install --no-dev`.
 
 This buildpack also detects when the app has a node `package.json` in the
 app's root. And will install node dependencies like less for example.
+
+## Web concurrency
+
+The number of `php-fpm` workers is defined dynamically according to the size of the
+container you are using.
+
+If you want to override this value, you can define the environment variable `WEB_CONCURRENCY`
 
 ## Frameworks
 
@@ -161,10 +174,18 @@ For example, to install the Sundown extension:
 Note that the extension requirements defined by dependencies are not taken into account there.
 It must be required by the project itself.
 
-##Logging
+## Logging
 
 This buildpack defines default log files by framework.
 It also defines log files nginx and php.
+
+## Blackfire
+
+The buildpack support automatically [Blackfire](https://blackfire.io) for monitoring if the
+following environment variables are set:
+
+* `BLACKFIRE_SERVER_ID`
+* `BLACKFIRE_SERVER_TOKEN`
 
 ## Configuration
 

@@ -5,6 +5,7 @@ daemon off;
 events {
     worker_connections  1024;
 }
+
 http {
     # Hide nginx version information.
     server_tokens off;
@@ -15,14 +16,20 @@ http {
 
     keepalive_timeout  65;
 
+    <% if ENV.has_key?("ACCESS_LOG_FORMAT") and ENV["ACCESS_LOG_FORMAT"].to_s != "" %>
+    log_format specialLog '<%= ENV['ACCESS_LOG_FORMAT'].gsub("'", "\\\\'") %>';
+    <% else %>
     log_format specialLog '$http_x_forwarded_for - '
                       '"$request" $status $body_bytes_sent '
-                      '"$http_referer" "$http_user_agent"';
+                      '"$http_referer" "$http_user_agent" '
+                      '$request_time';
+
+    <% end %>
 
     error_log logs/error.log notice;
     access_log logs/access.log specialLog;
 
-    client_max_body_size 100m;
+    client_max_body_size 75m;
     client_body_timeout 600s;
 
     upstream php {
@@ -70,11 +77,11 @@ http {
 
     	server {
     		server_name boutique01.monetico.fr;
-		listen <%= ENV['PORT'] %>;
+		    listen <%= ENV['PORT'] %>;
 
-        	#Specify a charset
-        	charset utf-8;
-		root /app/boutique01;
+        #Specify a charset
+        charset utf-8;
+		    root /app/boutique01;
 
 		location ~ \.php {
     			include fastcgi_params;
