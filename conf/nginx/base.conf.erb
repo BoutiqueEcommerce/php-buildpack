@@ -83,11 +83,25 @@ http {
         charset utf-8;
 		    root /app/boutique01/www;
 
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
 		    location ~ \.php {
     			include fastcgi_params;
-    			fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
-    			fastcgi_pass php;
-    			fastcgi_buffers 256 4k;
+    			fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
 		    }
 
 	   }
