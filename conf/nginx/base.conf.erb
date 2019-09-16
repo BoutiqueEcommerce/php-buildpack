@@ -136,4 +136,252 @@ http {
         }
 
      }
+
+     server {
+        server_name boutique03.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique03/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
+
+     server {
+        server_name boutique04.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique04/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
+
+     server {
+        server_name boutique05.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique05/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
+
+     server {
+        server_name boutique06.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique06/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
+
+     server {
+        server_name boutique07.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique07/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
+
+     server {
+        server_name boutique08.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique08/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
+
+     server {
+        server_name boutique09.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique09/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
+
+     server {
+        server_name boutique10.monetico.fr;
+        listen <%= ENV['PORT'] %>;
+
+        #Specify a charset
+        charset utf-8;
+        root /app/boutique10/www;
+
+        location / {
+          index index.php;
+          try_files $uri @rewriteapp;
+        }
+
+        location @rewriteapp {
+          rewrite ^(.*)$ /index.php$1 last;
+        }
+
+        location ~ \.php {
+          include fastcgi_params;
+          fastcgi_connect_timeout 3s;
+          fastcgi_read_timeout 30s;
+          fastcgi_buffers 256 4k;
+          fastcgi_split_path_info ^((?U).+?\.php)(/.*)$;
+          fastcgi_pass   php;
+          fastcgi_param  PATH_INFO          $fastcgi_path_info;
+          fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+        }
+
+     }
 }
