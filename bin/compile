@@ -24,6 +24,8 @@ CACHE_DIR="$2"
 cd "$BUILD_DIR"
 mkdir -p "$CACHE_DIR/package"
 
+export APP_ENV=${APP_ENV:-prod}
+
 function fetch_engine_package() {
     local engine="$1"
     local version="$2"
@@ -80,7 +82,7 @@ function best_php_version() {
     done
   fi
   [ -z "${require_php}" ] && require_php="$DEFAULT_PHP"
-  curl --fail --location --silent "${SEMVER_SERVER}/php-scalingo/resolve/${require_php}"
+  curl --fail --location --silent "${SEMVER_SERVER}/php-${STACK}/resolve/${require_php}"
 }
 
 function php_api_version() {
@@ -157,8 +159,8 @@ export PATH="$BUILD_DIR/bin:$PATH"
 curl --fail "${SWIFT_URL}/jq/jq" -L -s -o - > "$BUILD_DIR/bin/jq"
 chmod +x "$BUILD_DIR/bin/jq"
 
-DEFAULT_PHP="7.3"
-DEFAULT_NGINX="1.15.8"
+DEFAULT_PHP=$(curl --fail --location --silent "${SEMVER_SERVER}/php-${STACK}")
+DEFAULT_NGINX=$(curl --fail --location --silent "${SEMVER_SERVER}/nginx-${STACK}")
 
 AVAILABLE_NGINX_VERSIONS=$(curl "${SWIFT_URL}/manifest.nginx" 2> /dev/null)
 
@@ -183,7 +185,7 @@ PHP_FPM_EXTRA_CONFIG=
 COMPILE_CMD=
 NGINX_INCLUDES=
 ACCESS_LOG_FORMAT_COMPOSER_JSON=
-NEWRELIC_VERSION="${NEWRELIC_VERSION:=8.1.0.209}"
+NEWRELIC_VERSION="${NEWRELIC_VERSION:=9.3.0.248}"
 LOG_FILES=( "/app/vendor/nginx/logs/access.log" "/app/vendor/nginx/logs/error.log" "/app/vendor/php/var/log/error.log" )
 
 check_composer_syntax "$BUILD_DIR"
@@ -223,7 +225,7 @@ fetch_engine_package nginx "$NGINX_VERSION" "${VENDORED_NGINX}" | indent
 
 status "Bundling PHP ${PHP_VERSION}"
 
-# Install libraries also on build container, so PHP doesn't wayne about missing
+# Install libraries also on build container, so PHP doesn't complain about missing
 # dynamic libraries when running it during the slug compilation.
 fetch_package "libmcrypt-${mcrypt_version}" /app/vendor/libmcrypt > /dev/null
 fetch_package "libzip-${zip_version}" /app/vendor/libzip > /dev/null
@@ -235,13 +237,20 @@ test ! -d ".profile.d" && mkdir -p .profile.d || true
 cat > ".profile.d/php.sh" <<SH
 export PATH=/app/bin:${VENDORED_NGINX}/sbin:${VENDORED_PHP}/sbin:${VENDORED_PHP}/bin:/app/vendor/bin:\$PATH
 export APP_BUILD_TIME=$(date +%Y%m%d%H%M%S)
+export LD_LIBRARY_PATH=/app/vendor/libonig:\$LD_LIBRARY_PATH
 SH
 
-if [ $STACK = "scalingo" ] ; then
+if [ $STACK = "scalingo-14" ] ; then
     fetch_package "tail-${coreutils_version}" /app/vendor/coreutils > /dev/null
 fi
 
 source ".profile.d/php.sh"
+
+# Lib Oniguruma is only mandatory starting with PHP 7.4
+if [[ "$(php_api_version)" -ge "${PHP_MODULE_API_VERSIONS["7.4"]}" ]] ; then
+  fetch_package "libonig-${libonig_version}" /app/vendor/libonig > /dev/null
+  export LD_LIBRARY_PATH="/app/vendor/libonig:$LD_LIBRARY_PATH"
+fi
 
 # Fetch additional extensions
 status "Bundling extensions"
@@ -265,6 +274,7 @@ if [ -f "$BUILD_DIR/composer.json" ] && package_newrelic_enabled; then
 fi
 
 if [ -n "$BLACKFIRE_SERVER_ID" -a -n "$BLACKFIRE_SERVER_TOKEN" ] ; then
+    echo "       blackfire"
     fetch_package "ext/$(php_api_version)/php-blackfire" "/app/vendor/php" | indent
     cp /app/vendor/php/bin/profile.blackfire.sh $BUILD_DIR/.profile.d
 fi
@@ -277,8 +287,10 @@ fi
 mkdir -p "conf"
 cp "$basedir/util/autotune.php" "conf/autotune.php"
 cp "$basedir/../conf/nginx/base.conf.erb" "conf/nginx.conf.erb"
-# If PHP 7.3, custom config file to improve logging
-if [ "$(php_api_version)" = "20180731" ] ; then
+# Fix dirty logging on stdout/stderr (WARNING child with PID said on stderr). It
+# has been fixed in PHP 7.3 (https://github.com/php/php-src/pull/2458) with a
+# custom php-fpm parameter: `decorate_workers_output`
+if [[ "$(php_api_version)" -gt "${PHP_MODULE_API_VERSIONS["7.2"]}" ]] ; then
   cp "$basedir/../conf/php/php-fpm-73.conf" "/app/vendor/php/etc/php-fpm.conf"
 else
   cp "$basedir/../conf/php/php-fpm.conf" "/app/vendor/php/etc/php-fpm.conf"
@@ -287,11 +299,9 @@ cp "$basedir/../conf/php/php.ini" "/app/vendor/php/etc/php.ini"
 
 mkdir -p /app/vendor/php/etc/fpm.d
 
-pear config-set php_ini /app/vendor/php/etc/php.ini &> /dev/null
-
 echo "; extra configuration for php fpm" >> "/app/vendor/php/etc/fpm.d/extra.conf"
 
-# IFS= to set on multipleline each configuration item
+# IFS= to set on multiple line each configuration item
 OLDIFS=$IFS
 IFS=
 echo $PHP_EXTRA_CONFIG | while read conf ; do
@@ -366,6 +376,7 @@ status "Vendoring binaries into slug"
 mv /app/vendor/libmcrypt vendor/libmcrypt
 mv /app/vendor/nginx vendor/nginx
 mv /app/vendor/php vendor/php
+[ -d "/app/vendor/libonig" ] && mv /app/vendor/libonig vendor/libonig
 [ -d "/app/vendor/libzip" ] && mv /app/vendor/libzip vendor/libzip
 [ -d "/app/vendor/coreutils" ] && mv /app/vendor/coreutils vendor/coreutils
 [ -d "/app/vendor/libmemcached" ] && mv /app/vendor/libmemcached vendor/libmemcached
@@ -374,7 +385,7 @@ mv /app/vendor/php vendor/php
 
 mkdir -p "bin" "vendor/bin"
 
-if [ "$STACK" = "scalingo" ] ; then
+if [ "$STACK" = "scalingo-14" ] ; then
     test ! -f "bin/tail" && ln -s "/app/vendor/coreutils/bin/tail" "bin/tail"
 fi
 
@@ -396,7 +407,7 @@ env -0 | while IFS='=' read -r -d '' name value; do
     echo "env[\$name] = \\$\${name}" >> /app/vendor/php/etc/php-fpm.conf
 done
 
-# Set APP_ENV to prod by default for symfony based framework.
+# Set APP_ENV to prod by default for Symfony based framework.
 export APP_ENV="\${APP_ENV:-prod}"
 export DOCUMENT_ROOT="\${DOCUMENT_ROOT:-$DOCUMENT_ROOT}"
 export INDEX_DOCUMENT="\${INDEX_DOCUMENT:-$INDEX_DOCUMENT}"

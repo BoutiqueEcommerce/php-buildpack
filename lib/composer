@@ -51,9 +51,13 @@ function install_composer_deps() {
 
     cp "$CACHE_DIR/composer.phar" "$target/vendor/composer/bin/"
 
+    # Add composer to the path
+    cp "$target/vendor/composer/bin/composer.phar" "$target/bin/composer"
+    cp "$target/vendor/composer/bin/composer.phar" "$target/bin/composer.phar"
+
     local required_extensions=$(jq --raw-output '.require // {} | keys | .[]' < "$BUILD_DIR/composer.json" | grep '^ext-' | sed 's/^ext-//')
     if [ -n "$required_extensions" ]; then
-        status "Bundling additional extensions $required_extensions"
+        status "Bundling additional extensions"
         for ext in $required_extensions; do
             echo "$ext" | indent
             # TODO: Find a better way to ignore extensions which were not found in S3
