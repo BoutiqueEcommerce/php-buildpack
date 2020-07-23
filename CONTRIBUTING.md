@@ -9,7 +9,7 @@ features which are staged to go into the next release are found in the
 Releases are done by merging `development` to `master` and creating a
 tag on `master` which follows [Semantic Versioning][].
 
-[Semantic Versioning]: http://semver.org
+[Semantic Versioning]: https://semver.scalingo.io
 
 Features should always live in their own branch. Feature branches start
 with `feature/`, e.g. a name for your feature branch might be `feature/my-awesome-feature`.
@@ -38,7 +38,7 @@ configure the file `conf/buildpack.conf`:
 
 ```
 export SWIFT_BUCKET=scalingo-php-buildpack
-export SWIFT_URL=https://storage.sbg1.cloud.ovh.net/v1/AUTH_be65d32d71a6435589a419eac98613f2/${SWIFT_BUCKET}
+export SWIFT_URL=https://storage.sbg.cloud.ovh.net/v1/AUTH_be65d32d71a6435589a419eac98613f2/${SWIFT_BUCKET}
 ```
 
 To test your version of the buildpack, you will need jq in the swift bucket:
@@ -71,9 +71,9 @@ packaging scripts take the desired package version as first argument.
 
 When the packaging is complete, the manifest which lists all available
 package version is updated for the package type. Manifests are plain
-text files which list each available version on a separate line. 
+text files which list each available version on a separate line.
 
-They're uploaded to the Swift bucket as `manifest.<type>` files, 
+They're uploaded to the Swift bucket as `manifest.<type>` files,
 e.g. the manifest for PHP is `manifest.php`.
 
 Before packaging anything, you need to make sure that you've a Zlib

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-mongo_version="1.6.14"
+set -e
+
+mongo_version="1.6.16"
 
 curl -L "https://github.com/mongodb/mongo-php-driver-legacy/archive/${mongo_version}.tar.gz" \
     | tar xzv

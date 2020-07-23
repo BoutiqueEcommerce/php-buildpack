@@ -51,14 +51,22 @@ function install_composer_deps() {
 
     cp "$CACHE_DIR/composer.phar" "$target/vendor/composer/bin/"
 
-    local required_extensions=$(jq --raw-output '.require | keys | .[]' < "$BUILD_DIR/composer.json" | grep '^ext-' | sed 's/^ext-//')
+    # Add composer to the path
+    cp "$target/vendor/composer/bin/composer.phar" "$target/bin/composer"
+    cp "$target/vendor/composer/bin/composer.phar" "$target/bin/composer.phar"
+
+    local required_extensions=$(jq --raw-output '.require // {} | keys | .[]' < "$BUILD_DIR/composer.json" | grep '^ext-' | sed 's/^ext-//')
     if [ -n "$required_extensions" ]; then
-        status "Bundling additional extensions $required_extensions"
+        status "Bundling additional extensions"
         for ext in $required_extensions; do
             echo "$ext" | indent
             # TODO: Find a better way to ignore extensions which were not found in S3
             if [ "$ext" = "memcached" ] ; then
               fetch_package "libmemcached-${memcached_version}" "/app/vendor/libmemcached" | indent
+            elif [ "$ext" = "gmp" ] ; then
+              fetch_package "gmp-${gmp_version}" "/app/vendor/gmp" | indent
+            elif [ "$ext" = "tidy" ] ; then
+              fetch_package "libtidy-${tidy_version}" "/app/vendor/libtidy" | indent
             fi
             fetch_package "ext/$(php_api_version)/php-${ext}" "/app/vendor/php" 2>/dev/null || true | indent
         done
